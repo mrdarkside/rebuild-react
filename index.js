@@ -11,6 +11,7 @@
 // using Didact's createElement function
 /** jsx Didact.createElement */
 
+<<<<<<< HEAD
 function render(element, container) {
   const dom =
     element.type == "TEXT_ELEMENT"
@@ -31,6 +32,10 @@ function render(element, container) {
 const Didact = {
   createElement: createElement,
   render: render,
+=======
+const Didact = {
+  createElement: createElement,
+>>>>>>> ed1bf98b748adc83f250a2f741f999c0d9ab6c37
 };
 
 // Spread operator for children so it always be an array
@@ -39,7 +44,11 @@ function createElement(type, props, ...children) {
     type,
     props: {
       ...props,
+<<<<<<< HEAD
       children: children.map((child) =>
+=======
+      children: children.map(child =>
+>>>>>>> ed1bf98b748adc83f250a2f741f999c0d9ab6c37
         //wrap primitives into own object with type TEXT_ELEMENT
         typeof child === "object" ? child : createTextElement(child)
       ),
@@ -58,6 +67,7 @@ function createTextElement(text) {
     },
   };
 }
+<<<<<<< HEAD
 
 /** @jsx Didact.createElement */
 const element = (
@@ -69,3 +79,5 @@ const element = (
 
 const container = document.getElementById("root");
 Didact.render(element, container);
+=======
+>>>>>>> ed1bf98b748adc83f250a2f741f999c0d9ab6c37
