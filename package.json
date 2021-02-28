@@ -4,6 +4,8 @@
   "description": "learning react",
   "main": "./src/index.js",
   "scripts": {
+    "dev": "parcel index.html",
+    "build": "parcel build index.html"
   },
   "repository": {
     "type": "git",
@@ -15,4 +17,10 @@
     "url": "https://github.com/mrdarkside/rebuild-react/issues"
   },
   "homepage": "https://github.com/mrdarkside/rebuild-react#readme",
+  "devDependencies": {
+    "parcel-bundler": "^1.12.4"
+  },
+  "dependencies": {
+    "react": "^17.0.1"
+  }
 }
