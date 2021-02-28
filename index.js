@@ -26,6 +26,31 @@ function render(element, container) {
 
   element.props.children.forEach((child) => render(child, dom));
   container.appendChild(dom);
+
+  // Concurrent Mode
+  // Breaking work into small units so browser can interrupt
+  // rendering in case there is other work needs to be done
+  let nextUnitOfWork = null;
+
+  function workLoop(deadline) {
+    let shouldYield = false;
+    while (nextUnitOfWork && !shouldYield) {
+      nextUnitOfWork = perfomUnitOfWork(nextUnitOfWork);
+
+      // requestIdleCallback gives a deadline parameter to check how much time
+      // we have until the browser needs to take control
+      shouldYield = deadline.timeRemaining < 1;
+    }
+    // Browser will run the callback when the main thread is idle
+    // React doesn’t use requestIdleCallback anymore. Now it uses the scheduler package.
+    requestIdleCallback(workloop);
+  }
+
+  requestIdleCallback(workLoop);
+
+  function perfomUnitOfWork(nextUnitOfWork) {
+    //
+  }
 }
 
 const Didact = {
