@@ -11,8 +11,26 @@
 // using Didact's createElement function
 /** jsx Didact.createElement */
 
+function render(element, container) {
+  const dom =
+    element.type == "TEXT_ELEMENT"
+      ? document.createTextNode("")
+      : document.createElement(element.type);
+
+  const isProperty = (key) => key !== "children";
+  Object.keys(element.props)
+    .filter(isProperty)
+    .forEach((name) => {
+      dom[name] = element.props[name];
+    });
+
+  element.props.children.forEach((child) => render(child, dom));
+  container.appendChild(dom);
+}
+
 const Didact = {
   createElement: createElement,
+  render: render,
 };
 
 // Spread operator for children so it always be an array
@@ -21,7 +39,7 @@ function createElement(type, props, ...children) {
     type,
     props: {
       ...props,
-      children: children.map(child =>
+      children: children.map((child) =>
         //wrap primitives into own object with type TEXT_ELEMENT
         typeof child === "object" ? child : createTextElement(child)
       ),
@@ -48,3 +66,6 @@ const element = (
     <b />
   </div>
 );
+
+const container = document.getElementById("root");
+Didact.render(element, container);
