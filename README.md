@@ -1,3 +1,0 @@
-# rebuild-react
-
-learning react
