@@ -1,3 +1,3 @@
 # rebuild-react
 
-Learning React
+Learning React. WIP.
