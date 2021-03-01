@@ -11,7 +11,7 @@
 // using Didact's createElement function
 /** @jsx Didact.createElement */
 
-function createDom() {
+function createDom(element, container) {
   const dom =
     element.type == "TEXT_ELEMENT"
       ? document.createTextNode("")
@@ -60,17 +60,21 @@ requestIdleCallback(workLoop);
 
 function perfomUnitOfWork(fiber) {
   if (!fiber.dom) {
-    fiber.dom = createDom(fiber);
+    // Root fiber has dom already???
+    fiber.dom = createDom(fiber); // TO_GET #1
   }
 
+  // If fiber has parent appends current dom node to it
+  // has a problem that browser can inerrupt rendering
   if (fiber.parent) {
     fiber.parent.dom.appendChild(fiber.dom);
   }
 
   const elements = fiber.props.chldren;
   let index = 0;
-  let prevSibling = null;
+  let prevSibling = null; // To get if it's first child or not
 
+  // Creates fiber for each child
   while (index < elements.length) {
     const element = elements[index];
 
@@ -78,19 +82,23 @@ function perfomUnitOfWork(fiber) {
       type: element.type,
       props: element.props,
       parent: fiber,
-      dom: null,
+      dom: null, //  TO_GET #1
     };
   }
 
+  // Adding to fiber tree as a child or a sibling
   if (index === 0) {
     fiber.child = newFiber;
   } else {
-    prevSibling.sibling = newFiber;
+    prevSibling.sibling = newFiber; // Connecting siblings
   }
 
   prevSibling = newFiber;
   index++;
 
+  // Searching for the next unit of work
+  // First try with the child, then with the sibling,
+  // then with the uncle, and so on
   if (fiber.child) {
     return fiber.child;
   }
