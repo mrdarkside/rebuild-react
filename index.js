@@ -1,7 +1,7 @@
 // [x] Step I: The createElement Function
 // [x] Step II: The render Function
 // [x] Step III: Concurrent Mode
-// [ ] Step IV: Fibers
+// [x] Step IV: Fibers
 // [ ] Step V: Render and Commit Phases
 // [ ] Step VI: Reconciliation
 // [ ] Step VII: Function Components
@@ -11,7 +11,7 @@
 // using Didact's createElement function
 /** @jsx Didact.createElement */
 
-function render(element, container) {
+function createDom() {
   const dom =
     element.type == "TEXT_ELEMENT"
       ? document.createTextNode("")
@@ -26,30 +26,80 @@ function render(element, container) {
 
   element.props.children.forEach((child) => render(child, dom));
   container.appendChild(dom);
+}
 
-  // Concurrent Mode
-  // Breaking work into small units so browser can interrupt
-  // rendering in case there is other work needs to be done
-  let nextUnitOfWork = null;
+function render(element, container) {
+  nextUnitOfWork = {
+    dom: container,
+    props: {
+      children: [element],
+    },
+  };
+}
 
-  function workLoop(deadline) {
-    let shouldYield = false;
-    while (nextUnitOfWork && !shouldYield) {
-      nextUnitOfWork = perfomUnitOfWork(nextUnitOfWork);
+// Concurrent Mode
+// Breaking work into small units so browser can interrupt
+// rendering in case there is other work needs to be done
+let nextUnitOfWork = null;
 
-      // requestIdleCallback gives a deadline parameter to check how much time
-      // we have until the browser needs to take control
-      shouldYield = deadline.timeRemaining < 1;
-    }
-    // Browser will run the callback when the main thread is idle
-    // React doesn’t use requestIdleCallback anymore — now it uses the scheduler package.
-    requestIdleCallback(workloop);
+function workLoop(deadline) {
+  let shouldYield = false;
+  while (nextUnitOfWork && !shouldYield) {
+    nextUnitOfWork = perfomUnitOfWork(nextUnitOfWork);
+
+    // requestIdleCallback gives a deadline parameter to check how much time
+    // we have until the browser needs to take control
+    shouldYield = deadline.timeRemaining < 1;
+  }
+  // Browser will run the callback when the main thread is idle
+  // React doesn’t use requestIdleCallback anymore — now it uses the scheduler package.
+  requestIdleCallback(workloop);
+}
+
+requestIdleCallback(workLoop);
+
+function perfomUnitOfWork(fiber) {
+  if (!fiber.dom) {
+    fiber.dom = createDom(fiber);
   }
 
-  requestIdleCallback(workLoop);
+  if (fiber.parent) {
+    fiber.parent.dom.appendChild(fiber.dom);
+  }
 
-  function perfomUnitOfWork(nextUnitOfWork) {
-    //
+  const elements = fiber.props.chldren;
+  let index = 0;
+  let prevSibling = null;
+
+  while (index < elements.length) {
+    const element = elements[index];
+
+    const newFiber = {
+      type: element.type,
+      props: element.props,
+      parent: fiber,
+      dom: null,
+    };
+  }
+
+  if (index === 0) {
+    fiber.child = newFiber;
+  } else {
+    prevSibling.sibling = newFiber;
+  }
+
+  prevSibling = newFiber;
+  index++;
+
+  if (fiber.child) {
+    return fiber.child;
+  }
+  let nextFiber = fiber;
+  while (nextFiber) {
+    if (nextFiber.sibling) {
+      return nextFiber.sibling;
+    }
+    nextFiber = nextFiber.parent;
   }
 }
 
