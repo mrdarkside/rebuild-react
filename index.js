@@ -1,15 +1,15 @@
-// Step I: The createElement Function
-// Step II: The render Function
-// Step III: Concurrent Mode
-// Step IV: Fibers
-// Step V: Render and Commit Phases
-// Step VI: Reconciliation
-// Step VII: Function Components
-// Step VIII: Hooks
+// [x] Step I: The createElement Function
+// [x] Step II: The render Function
+// [x] Step III: Concurrent Mode
+// [ ] Step IV: Fibers
+// [ ] Step V: Render and Commit Phases
+// [ ] Step VI: Reconciliation
+// [ ] Step VII: Function Components
+// [ ] Step VIII: Hooks
 
 // Use this comment with "@" before "jsx" to let babel translate jsx
 // using Didact's createElement function
-/** jsx Didact.createElement */
+/** @jsx Didact.createElement */
 
 function render(element, container) {
   const dom =
@@ -42,7 +42,7 @@ function render(element, container) {
       shouldYield = deadline.timeRemaining < 1;
     }
     // Browser will run the callback when the main thread is idle
-    // React doesn’t use requestIdleCallback anymore. Now it uses the scheduler package.
+    // React doesn’t use requestIdleCallback anymore — now it uses the scheduler package.
     requestIdleCallback(workloop);
   }
 
@@ -65,15 +65,15 @@ function createElement(type, props, ...children) {
     props: {
       ...props,
       children: children.map((child) =>
-        //wrap primitives into own object with type TEXT_ELEMENT
+        //wraps primitives into own object with type TEXT_ELEMENT
         typeof child === "object" ? child : createTextElement(child)
       ),
     },
   };
 }
 
-// React doesn’t wrap primitive values or create empty arrays when there aren’t children
-// just simplification
+// React doesn’t wrap primitive values or create empty arrays
+// when there aren’t children, just a simplification
 function createTextElement(text) {
   return {
     type: "TEXT_ELEMENT",
