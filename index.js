@@ -28,20 +28,26 @@ function createDom(element, container) {
   container.appendChild(dom);
 }
 
+function commitRoot() {
+  ////////////////////////////////
+}
+
 function render(element, container) {
-  nextUnitOfWork = {
+  wipRoot = {
     dom: container,
     props: {
       children: [element],
     },
   };
+  nextUnitOfWork = wipRoot;
 }
+
+let nextUnitOfWork = null;
+letwipRoot = null;
 
 // Concurrent Mode
 // Breaking work into small units so browser can interrupt
 // rendering in case there is other work needs to be done
-let nextUnitOfWork = null;
-
 function workLoop(deadline) {
   let shouldYield = false;
   while (nextUnitOfWork && !shouldYield) {
@@ -51,6 +57,11 @@ function workLoop(deadline) {
     // we have until the browser needs to take control
     shouldYield = deadline.timeRemaining < 1;
   }
+
+  if (!nextUnitOfWork && wipRoot) {
+    commitRoot();
+  }
+
   // Browser will run the callback when the main thread is idle
   // React doesn’t use requestIdleCallback anymore — now it uses the scheduler package.
   requestIdleCallback(workloop);
@@ -62,12 +73,6 @@ function perfomUnitOfWork(fiber) {
   if (!fiber.dom) {
     // Root fiber has dom already???
     fiber.dom = createDom(fiber); // TO_GET #1
-  }
-
-  // If fiber has parent appends current dom node to it
-  // has a problem that browser can inerrupt rendering
-  if (fiber.parent) {
-    fiber.parent.dom.appendChild(fiber.dom);
   }
 
   const elements = fiber.props.chldren;
