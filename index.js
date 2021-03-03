@@ -29,7 +29,17 @@ function createDom(element, container) {
 }
 
 function commitRoot() {
-  ////////////////////////////////
+  commitWork(wipRoot.child);
+  currentRoot = wipRoot;
+  wipRoot = null;
+}
+
+function commitWork(fiber) {
+  if (!fiber) return;
+  const domParent = fiber.parent.dom;
+  domParent.appendChild(fiber.dom);
+  commitWork(fiber.child);
+  commitWork(fiber.sibling);
 }
 
 function render(element, container) {
@@ -38,11 +48,15 @@ function render(element, container) {
     props: {
       children: [element],
     },
+    // Link to the old fiber, the fiber committed to the DOM
+    // in the previous commit phase
+    alternate: currentRoot,
   };
   nextUnitOfWork = wipRoot;
 }
 
 let nextUnitOfWork = null;
+let currentRoot = null; // Reference to last fiber tree committed to the DOM
 letwipRoot = null;
 
 // Concurrent Mode
@@ -76,6 +90,24 @@ function perfomUnitOfWork(fiber) {
   }
 
   const elements = fiber.props.chldren;
+  reconcileChildren(fiber, elements);
+
+  // Searching for the next unit of work
+  // First try with the child, then with the sibling,
+  // then with the uncle, and so on
+  if (fiber.child) {
+    return fiber.child;
+  }
+  let nextFiber = fiber;
+  while (nextFiber) {
+    if (nextFiber.sibling) {
+      return nextFiber.sibling;
+    }
+    nextFiber = nextFiber.parent;
+  }
+}
+
+function reconcileChildren(wipFiber, elements) {
   let index = 0;
   let prevSibling = null; // To get if it's first child or not
 
@@ -100,20 +132,6 @@ function perfomUnitOfWork(fiber) {
 
   prevSibling = newFiber;
   index++;
-
-  // Searching for the next unit of work
-  // First try with the child, then with the sibling,
-  // then with the uncle, and so on
-  if (fiber.child) {
-    return fiber.child;
-  }
-  let nextFiber = fiber;
-  while (nextFiber) {
-    if (nextFiber.sibling) {
-      return nextFiber.sibling;
-    }
-    nextFiber = nextFiber.parent;
-  }
 }
 
 const Didact = {
