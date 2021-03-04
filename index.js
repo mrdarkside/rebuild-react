@@ -4,12 +4,8 @@
 // [x] Step IV: Fibers
 // [x] Step V: Render and Commit Phases
 // [x] Step VI: Reconciliation
-// [ ] Step VII: Function Components
-// [ ] Step VIII: Hooks
-
-// Use this comment with "@" before "jsx" to let babel translate jsx
-// using Didact's createElement function
-/** @jsx Didact.createElement */
+// [x] Step VII: Function Components
+// [x] Step VIII: Hooks
 
 // Spread operator for children so it always be an array
 function createElement(type, props, ...children) {
@@ -37,21 +33,23 @@ function createTextElement(text) {
   };
 }
 
-function createDom(element, container) {
+function createDom(fiber) {
   const dom =
-    element.type == "TEXT_ELEMENT"
+    fiber.type == "TEXT_ELEMENT"
       ? document.createTextNode("")
-      : document.createElement(element.type);
+      : document.createElement(fiber.type);
 
   updateDom(dom, {}, fiber.props);
 
   return dom;
 }
 
-const isEvent = (key) => key.startsWith("on"); // One special kind of prop that we need to update are event listeners
-const isProperty = (key = key !== "children" && !isEvent(key));
+// One special kind of prop that we need to update are event listeners
+const isEvent = (key) => key.startsWith("on");
+const isProperty = (key) => key !== "children" && !isEvent(key);
 const isNew = (prev, next) => (key) => prev[key] !== next[key];
 const isGone = (prev, next) => (key) => !(key in next);
+
 function updateDom(dom, prevProps, nextProps) {
   // Compares the props from the old fiber to the props of the new fiber,
   // removes the props that are gone,
@@ -103,17 +101,34 @@ function commitWork(fiber) {
   if (!fiber) {
     return;
   }
-  const domParent = fiber.parent.dom;
-  if (fiber.effectTag === "PLACEMENT" && fiber.dom !== null) {
+
+  // To find the parent of a DOM node we’ll need to go up the fiber tree
+  // until we find a fiber with a DOM node.
+  let domParentFiber = fiber.parent;
+  while (!domParentFiber.dom) {
+    domParentFiber = domParentFiber.parent;
+  }
+  const domParent = domParentFiber.dom;
+
+  if (fiber.effectTag === "PLACEMENT" && fiber.dom != null) {
     domParent.appendChild(fiber.dom);
-  } else if (fiber.effectTag === "DELETION") {
-    domParent.removeChild(fiber.dom);
-  } else if (fiber.effectTag === "UPDATE" && fiber.dom !== null) {
+  } else if (fiber.effectTag === "UPDATE" && fiber.dom != null) {
     updateDom(fiber.dom, fiber.alternate.props, fiber.props);
+  } else if (fiber.effectTag === "DELETION") {
+    commitDeletion(fiber, domParent);
   }
 
   commitWork(fiber.child);
   commitWork(fiber.sibling);
+}
+
+// Removing a node we also need to keep going until we find a child with a DOM node.
+function commitDeletion(fiber, domParent) {
+  if (fiber.dom) {
+    domParent.removeChild(fiber.dom);
+  } else {
+    commitDeletion(fiber.child, domParent);
+  }
 }
 
 function render(element, container) {
@@ -141,11 +156,11 @@ let deletions = null;
 function workLoop(deadline) {
   let shouldYield = false;
   while (nextUnitOfWork && !shouldYield) {
-    nextUnitOfWork = perfomUnitOfWork(nextUnitOfWork);
+    nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
 
     // requestIdleCallback gives a deadline parameter to check how much time
     // we have until the browser needs to take control
-    shouldYield = deadline.timeRemaining < 1;
+    shouldYield = deadline.timeRemaining() < 1;
   }
 
   if (!nextUnitOfWork && wipRoot) {
@@ -153,19 +168,18 @@ function workLoop(deadline) {
   }
   // Browser will run the callback when the main thread is idle
   // React doesn’t use requestIdleCallback anymore — now it uses the scheduler package.
-  requestIdleCallback(workloop);
+  requestIdleCallback(workLoop);
 }
 
 requestIdleCallback(workLoop);
 
-function perfomUnitOfWork(fiber) {
-  if (!fiber.dom) {
-    // Root fiber has dom already???
-    fiber.dom = createDom(fiber); // TO_GET #1
+function performUnitOfWork(fiber) {
+  const isFunctionComponent = fiber.type instanceof Function;
+  if (isFunctionComponent) {
+    updateFunctionComponent(fiber);
+  } else {
+    updateHostComponent(fiber);
   }
-
-  const elements = fiber.props.chldren;
-  reconcileChildren(fiber, elements);
 
   // Searching for the next unit of work
   // First try with the child, then with the sibling,
@@ -182,13 +196,73 @@ function perfomUnitOfWork(fiber) {
   }
 }
 
+let wipFiber = null;
+let hookIndex = null;
+
+function updateFunctionComponent(fiber) {
+  wipFiber = fiber;
+  hookIndex = 0;
+  // Adds a hooks array to the fiber to support calling useState
+  // several times in the same component
+  wipFiber.hooks = [];
+  // Runs function to get the children
+  const children = [fiber.type(fiber.props)];
+  reconcileChildren(fiber, children);
+}
+
+function useState(initial) {
+  const oldHook =
+    wipFiber.alternate &&
+    wipFiber.alternate.hooks &&
+    wipFiber.alternate.hooks[hookIndex];
+  // If there is an old hook, copies the state from the old hook to the new hook,
+  // if there is not initializes the state.
+  const hook = {
+    state: oldHook ? oldHook.state : initial,
+    queue: [],
+  };
+
+  const actions = oldHook ? oldHook.queue : [];
+  actions.forEach((action) => {
+    hook.state = action(hook.state);
+  });
+
+  const setState = (action) => {
+    // For Counter example action is the function that increments the state by one
+    hook.queue.push(action);
+    // Set a new work in progress root as the next unit of work
+    // so the work loop can start a new render phase
+    wipRoot = {
+      dom: currentRoot.dom,
+      props: currentRoot.props,
+      alternate: currentRoot,
+    };
+    nextUnitOfWork = wipRoot;
+    deletions = [];
+  };
+
+  // Add the new hook to the fiber, increment the hook index by one,
+  // and return the state
+  wipFiber.hooks.push(hook);
+  hookIndex++;
+  return [hook.state, setState];
+}
+
+function updateHostComponent(fiber) {
+  if (!fiber.dom) {
+    // Root fiber has dom already???
+    fiber.dom = createDom(fiber); // TO_GET #1
+  }
+  reconcileChildren(fiber, fiber.props.children);
+}
+
 function reconcileChildren(wipFiber, elements) {
   let index = 0;
-  let oldFiber = wipFiber.alternate && wipFiber.alternate.children;
+  let oldFiber = wipFiber.alternate && wipFiber.alternate.child;
   let prevSibling = null; // To get if it's first child or not
 
   // Creates fiber for each child
-  while (index < elements.length || oldFiber !== null) {
+  while (index < elements.length || oldFiber != null) {
     const element = elements[index];
     let newFiber = null;
 
@@ -226,13 +300,14 @@ function reconcileChildren(wipFiber, elements) {
       oldFiber.effectTag = "DELETION";
       deletions.push(oldFiber);
     }
+
     if (oldFiber) {
       oldFiber = oldFiber.sibling;
     }
 
     if (index === 0) {
-      fiber.child = newFiber;
-    } else {
+      wipFiber.child = newFiber;
+    } else if (element) {
       prevSibling.sibling = newFiber; // Connecting siblings
     } // Adding to fiber tree as a child or a sibling
 
@@ -244,23 +319,17 @@ function reconcileChildren(wipFiber, elements) {
 const Didact = {
   createElement: createElement,
   render: render,
+  useState,
 };
+
+// Use this comment with "@" before "jsx" to let babel translate jsx
+// using Didact's createElement function
 
 /** @jsx Didact.createElement */
+function Counter() {
+  const [state, setState] = Didact.useState(1);
+  return <h1 onClick={() => setState((c) => c + 1)}>Count: {state}</h1>;
+}
+const element = <Counter />;
 const container = document.getElementById("root");
-
-const updateValue = (e) => {
-  rerender(e.target.value);
-};
-
-const rerender = (value) => {
-  const element = (
-    <div>
-      <input onInput={updateValue} value={value} />
-      <h2>Hello {value}</h2>
-    </div>
-  );
-  Didact.render(element, container);
-};
-
-rerender("World");
+Didact.render(element, container);
