@@ -316,20 +316,16 @@ function reconcileChildren(wipFiber, elements) {
   }
 }
 
-const Didact = {
+export default React = {
   createElement: createElement,
   render: render,
   useState,
 };
 
-// Use this comment with "@" before "jsx" to let babel translate jsx
-// using Didact's createElement function
-
-/** @jsx Didact.createElement */
 function Counter() {
-  const [state, setState] = Didact.useState(1);
+  const [state, setState] = React.useState(1);
   return <h1 onClick={() => setState((c) => c + 1)}>Count: {state}</h1>;
 }
 const element = <Counter />;
 const container = document.getElementById("root");
-Didact.render(element, container);
+React.render(element, container);
