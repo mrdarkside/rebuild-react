@@ -210,44 +210,6 @@ function updateFunctionComponent(fiber) {
   reconcileChildren(fiber, children);
 }
 
-function useState(initial) {
-  const oldHook =
-    wipFiber.alternate &&
-    wipFiber.alternate.hooks &&
-    wipFiber.alternate.hooks[hookIndex];
-  // If there is an old hook, copies the state from the old hook to the new hook,
-  // if there is not initializes the state.
-  const hook = {
-    state: oldHook ? oldHook.state : initial,
-    queue: [],
-  };
-
-  const actions = oldHook ? oldHook.queue : [];
-  actions.forEach((action) => {
-    hook.state = action(hook.state);
-  });
-
-  const setState = (action) => {
-    // For Counter example action is the function that increments the state by one
-    hook.queue.push(action);
-    // Set a new work in progress root as the next unit of work
-    // so the work loop can start a new render phase
-    wipRoot = {
-      dom: currentRoot.dom,
-      props: currentRoot.props,
-      alternate: currentRoot,
-    };
-    nextUnitOfWork = wipRoot;
-    deletions = [];
-  };
-
-  // Add the new hook to the fiber, increment the hook index by one,
-  // and return the state
-  wipFiber.hooks.push(hook);
-  hookIndex++;
-  return [hook.state, setState];
-}
-
 function updateHostComponent(fiber) {
   if (!fiber.dom) {
     // Root fiber has dom already???
@@ -316,16 +278,49 @@ function reconcileChildren(wipFiber, elements) {
   }
 }
 
-export default React = {
+function useState(initial) {
+  const oldHook =
+    wipFiber.alternate &&
+    wipFiber.alternate.hooks &&
+    wipFiber.alternate.hooks[hookIndex];
+  // If there is an old hook, copies the state from the old hook to the new hook,
+  // if there is not initializes the state.
+  const hook = {
+    state: oldHook ? oldHook.state : initial,
+    queue: [],
+  };
+
+  const actions = oldHook ? oldHook.queue : [];
+  actions.forEach((action) => {
+    hook.state = action(hook.state);
+  });
+
+  const setState = (action) => {
+    // For Counter example action is the function that increments the state by one
+    hook.queue.push(action);
+    // Set a new work in progress root as the next unit of work
+    // so the work loop can start a new render phase
+    wipRoot = {
+      dom: currentRoot.dom,
+      props: currentRoot.props,
+      alternate: currentRoot,
+    };
+    nextUnitOfWork = wipRoot;
+    deletions = [];
+  };
+
+  // Add the new hook to the fiber, increment the hook index by one,
+  // and return the state
+  wipFiber.hooks.push(hook);
+  hookIndex++;
+  return [hook.state, setState];
+}
+
+const React = {
   createElement: createElement,
   render: render,
-  useState,
 };
 
-function Counter() {
-  const [state, setState] = React.useState(1);
-  return <h1 onClick={() => setState((c) => c + 1)}>Count: {state}</h1>;
-}
-const element = <Counter />;
-const container = document.getElementById("root");
-React.render(element, container);
+export default React;
+
+export { useState };
